@@ -1,0 +1,17 @@
+SQL> create or replace function fn_emp_less_than_arun_avg
+  2  return varchar2
+  3  is
+  4      v_dept number;
+  5      v_avg  number;
+  6  begin
+  7      select dept_id into v_dept from employee2 where lower(emp_name) = 'arun';
+  8      select avg(salary) into v_avg from employee2 where dept_id = v_dept;
+  9      for r in (select emp_id, emp_name, salary from employee2
+ 10          where dept_id = v_dept and salary < v_avg)loop
+ 11          dbms_output.put_line(r.emp_id || ' - ' || r.emp_name || ' - ' || r.salary);
+ 12      end loop;
+ 13      return 'employees with salary less than average salary of arun department';
+ 14  end;
+ 15  /
+
+SQL> select fn_emp_less_than_arun_avg from dual;
