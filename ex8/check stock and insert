@@ -1,0 +1,18 @@
+SQL> create table stock (
+  2      product_id number primary key,
+  3      quantity number
+  4  );
+
+SQL> create or replace trigger trg_check_stock_before_order
+  2  before insert on orderdetails
+  3  for each row
+  4  declare
+  5      v_stock number;
+  6  begin
+  7      select quantity into v_stock from stock
+  8      where product_id = :new.product_id;
+  9      if :new.quantity > v_stock then
+ 10          raise_application_error(-20040,'not enough stock available to place order');
+ 11      end if;
+ 12  end;
+ 13  /
