@@ -1,0 +1,15 @@
+
+SQL> create or replace function fn_avg_salary_each_job
+  2  return varchar2
+  3  is
+  4  begin
+  5      for r in (select job_title, avg(salary) avg_sal from employee2
+  6          group by job_title) loop
+  7          dbms_output.put_line(r.job_title || ' - ' || r.avg_sal);
+  8      end loop;
+  9
+ 10      return 'job title and average salary';
+ 11  end;
+ 12  /
+
+SQL> select fn_avg_salary_each_job from dual;
