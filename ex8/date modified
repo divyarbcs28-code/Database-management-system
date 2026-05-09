@@ -1,0 +1,12 @@
+alter table employee1 add last_modified date;
+
+SQL> create or replace trigger trg_emp_last_modified
+  2  before update on employee1
+  3  for each row
+  4  begin
+  5      :new.last_modified := sysdate;
+  6  end;
+  7  /
+
+SQL> select employee_id, employee_name, last_modified from employee1
+  2  where employee_id = 201;
