@@ -1,0 +1,8 @@
+SQL> INSERT INTO orders (order_id, order_date, total_amount)
+  2  SELECT order_id + 1000,
+  3         order_date,
+  4         CASE
+  5             WHEN total_amount >= 12000 THEN total_amount
+  6             ELSE total_amount + 500
+  7         END
+  8  FROM v_high_value_orders;
