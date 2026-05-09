@@ -1,0 +1,220 @@
+package ex10;
+
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
+import java.sql.*;
+
+public class CustomerRegistration extends JFrame {
+
+    private JTextField     nameField, emailField, phoneField, addressField;
+    private JPasswordField passwordField;
+    private JLabel         nameHint, emailHint, phoneHint, passHint, addrHint, statusLbl;
+
+    public CustomerRegistration() {
+        UITheme.applyFrame(this, "Customer Registration", 520, 600);
+        setLayout(new BorderLayout(0, 0));
+
+        // ── Header ──────────────────────────────────────────
+        JPanel hdr = UITheme.panel(new BorderLayout());
+        hdr.setBorder(new CompoundBorder(
+            new MatteBorder(0,0,1,0, UITheme.C_BORDER),
+            new EmptyBorder(16, 22, 16, 22)));
+        JLabel title = new JLabel("Create Account");
+        title.setFont(UITheme.F_TITLE); title.setForeground(UITheme.C_TEXT);
+        JLabel sub = new JLabel("All fields are required");
+        sub.setFont(UITheme.F_STATUS); sub.setForeground(UITheme.C_TEXT_MUTED);
+        hdr.add(title, BorderLayout.WEST);
+        hdr.add(sub,   BorderLayout.EAST);
+        add(hdr, BorderLayout.NORTH);
+
+        // ── Form ────────────────────────────────────────────
+        JPanel form = UITheme.panel(new GridBagLayout());
+        form.setBorder(new EmptyBorder(16, 40, 10, 40));
+        GridBagConstraints g = new GridBagConstraints();
+        g.fill = GridBagConstraints.HORIZONTAL;
+
+        nameField     = UITheme.field();
+        emailField    = UITheme.field();
+        phoneField    = UITheme.field();
+        passwordField = UITheme.passField();
+        addressField  = UITheme.field();
+
+        nameHint  = hintLabel();
+        emailHint = hintLabel();
+        phoneHint = hintLabel();
+        passHint  = hintLabel();
+        addrHint  = hintLabel();
+
+        // Wire real-time validation for each field
+        Validator.wire(nameField,      Validator.RULE_NAME,      nameHint);
+        Validator.wire(emailField,     Validator.RULE_EMAIL,     emailHint);
+        Validator.wire(phoneField,     Validator.RULE_PHONE,     phoneHint);
+        Validator.wirePass(passwordField, Validator.RULE_PASSWORD, passHint);
+        Validator.wire(addressField,   Validator.RULE_ADDRESS,   addrHint);
+
+        // Add Tab key traversal in order
+        nameField.addActionListener(e     -> emailField.requestFocus());
+        emailField.addActionListener(e    -> phoneField.requestFocus());
+        phoneField.addActionListener(e    -> passwordField.requestFocus());
+        passwordField.addActionListener(e -> addressField.requestFocus());
+
+        // Layout: label row + field row + hint row for each field
+        addFormRow(form, g, 0,  "Full Name *",  nameField,     nameHint,
+                   "E.g. arun");
+        addFormRow(form, g, 3,  "Email *",      emailField,    emailHint,
+                   "E.g. arun@gmail.com");
+        addFormRow(form, g, 6,  "Phone *",      phoneField,    phoneHint,
+                   "10-digit mobile  e.g. 9876543210");
+        addFormRow(form, g, 9,  "Password *",   passwordField, passHint,
+                   "Min 8 chars, must include a letter and a digit");
+        addFormRow(form, g, 12, "Address *",    addressField,  addrHint,
+                   "House / Street / City");
+
+        add(form, BorderLayout.CENTER);
+
+        // ── Buttons & status ─────────────────────────────────
+        statusLbl = UITheme.statusLabel();
+
+        JButton btnReg   = UITheme.btn("Register");
+        JButton btnClear = UITheme.btn("Clear");
+        JButton btnBack  = UITheme.btn("Back to Login");
+
+        btnReg.addActionListener(e   -> registerCustomer());
+        btnClear.addActionListener(e -> clearFields());
+        btnBack.addActionListener(e  -> { dispose(); new CustomerLogin().setVisible(true); });
+
+        JPanel south = UITheme.panel(new BorderLayout());
+        south.add(UITheme.btnRow(btnReg, btnClear, btnBack), BorderLayout.CENTER);
+        JPanel sRow = UITheme.panel(new FlowLayout(FlowLayout.CENTER));
+        sRow.add(statusLbl);
+        south.add(sRow, BorderLayout.SOUTH);
+        add(south, BorderLayout.SOUTH);
+    }
+
+    /**
+     * Adds three grid rows for one form field:
+     *   row+0 : label  |  placeholder hint text (muted, right side)
+     *   row+1 : empty  |  the input field
+     *   row+2 : empty  |  validation hint label
+     */
+    private void addFormRow(JPanel form, GridBagConstraints g,
+                            int startRow, String labelText,
+                            JTextField field, JLabel hint,
+                            String placeholder) {
+        int LW = 120;  // fixed label column width
+
+        // Row A: field label (left) + placeholder tip (right, muted)
+        g.gridx=0; g.gridy=startRow; g.weightx=0; g.insets=new Insets(10,6,1,6);
+        JLabel lbl = UITheme.mLabel(labelText);
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lbl.setForeground(UITheme.C_TEXT);
+        lbl.setPreferredSize(new Dimension(LW, 22));
+        form.add(lbl, g);
+
+        g.gridx=1; g.weightx=1; g.insets=new Insets(10,6,1,6);
+        JLabel tip = new JLabel(placeholder);
+        tip.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        tip.setForeground(UITheme.C_TEXT_MUTED);
+        form.add(tip, g);
+
+        // Row B: blank (left) + input field (right)
+        g.gridx=0; g.gridy=startRow+1; g.weightx=0; g.insets=new Insets(0,6,0,6);
+        form.add(new JLabel(""), g);
+        g.gridx=1; g.weightx=1;
+        form.add(field, g);
+
+        // Row C: blank (left) + hint label (right)
+        g.gridx=0; g.gridy=startRow+2; g.weightx=0; g.insets=new Insets(0,6,2,6);
+        form.add(new JLabel(""), g);
+        g.gridx=1; g.weightx=1;
+        form.add(hint, g);
+    }
+
+    // ── Submit validation + DB insert ─────────────────────────
+    private void registerCustomer() {
+        String name     = nameField.getText().trim();
+        String email    = emailField.getText().trim();
+        String phone    = phoneField.getText().trim();
+        String password = new String(passwordField.getPassword());
+        String address  = addressField.getText().trim();
+
+        // Run all rules; stop at first error
+        Validator.FieldRule[] rules = {
+            new Validator.FieldRule(nameField,     Validator.RULE_NAME),
+            new Validator.FieldRule(emailField,    Validator.RULE_EMAIL),
+            new Validator.FieldRule(phoneField,    Validator.RULE_PHONE),
+            new Validator.FieldRule(passwordField, Validator.RULE_PASSWORD),
+            new Validator.FieldRule(addressField,  Validator.RULE_ADDRESS),
+        };
+
+        String err = Validator.validate(rules);
+        if (!err.isEmpty()) {
+            setStatus(err, true);
+            return;
+        }
+
+        // Strip optional +91 / 0 prefix before storing (store 10-digit form)
+        String cleanPhone = phone.replaceAll("[\\s\\-]","")
+                                 .replaceFirst("^(\\+91|0)", "");
+
+        // DB insert
+        setStatus("Registering...", false);
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            String sql = "INSERT INTO Customers1 "
+                + "(customer_id,name,email,phone,password,address,created_date) "
+                + "VALUES (customer1_seq.NEXTVAL,?,?,?,?,?,SYSDATE)";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, name);
+            ps.setString(2, email);
+            ps.setString(3, cleanPhone);
+            ps.setString(4, password);
+            ps.setString(5, address);
+            ps.executeUpdate();
+
+            setStatus("Registration successful! Redirecting to login...", false);
+            clearFields();
+            Timer t = new Timer(1400, ev -> { dispose(); new CustomerLogin().setVisible(true); });
+            t.setRepeats(false); t.start();
+
+        } catch (SQLException ex) {
+            // ORA-00001 = unique constraint (email already exists)
+            if (ex.getMessage().toUpperCase().contains("UNIQUE") ||
+                ex.getMessage().toUpperCase().contains("ORA-00001")) {
+                emailField.setBorder(Validator.borderErr);
+                emailHint.setForeground(Validator.C_ERROR);
+                emailHint.setText("This email is already registered.");
+                setStatus("Email already exists. Please use a different email.", true);
+            } else {
+                setStatus("Database error: " + ex.getMessage(), true);
+            }
+        }
+    }
+
+    private void clearFields() {
+        nameField.setText(""); emailField.setText(""); phoneField.setText("");
+        passwordField.setText(""); addressField.setText("");
+        // Reset hint labels
+        for (JLabel h : new JLabel[]{nameHint, emailHint, phoneHint, passHint, addrHint}) {
+            h.setText(" ");
+        }
+        // Reset borders
+        for (JTextField f : new JTextField[]{nameField, emailField, phoneField, addressField}) {
+            f.setBorder(Validator.borderOk);
+        }
+        passwordField.setBorder(Validator.borderOk);
+        statusLbl.setText(" ");
+    }
+
+    private void setStatus(String msg, boolean isError) {
+        statusLbl.setText(msg);
+        statusLbl.setForeground(isError ? new Color(180,30,30) : new Color(20,130,60));
+    }
+
+    private JLabel hintLabel() {
+        JLabel l = new JLabel(" ");
+        l.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        l.setForeground(Validator.C_ERROR);
+        return l;
+    }
+}
