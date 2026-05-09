@@ -1,0 +1,110 @@
+package ex10;
+
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.table.*;
+import java.awt.*;
+import java.sql.*;
+
+/**
+ * Screen 5 — Order Status Management
+ * Embedded inside MainDashboard.
+ */
+public class OrderStatusManagement {
+
+    private DefaultTableModel   model;
+    private JTable              table;
+    private JComboBox<String>   statusCombo;
+    private JLabel              statusLbl;
+
+    public JPanel buildPanel() {
+        JPanel root = UITheme.bgPanel(new BorderLayout(0,0));
+        root.add(UITheme.sectionHeader("View Orders",
+                 "view and update your order statuses"), BorderLayout.NORTH);
+
+        // Table
+        String[] cols = {"Order ID","Customer ID","Order Date","Total (Rs)","Status"};
+        model = new DefaultTableModel(cols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        table = UITheme.styledTable(model);
+
+        JPanel center = UITheme.panel(new BorderLayout());
+        center.setBorder(new EmptyBorder(12,16,0,16));
+        center.add(UITheme.scrl(table), BorderLayout.CENTER);
+        root.add(center, BorderLayout.CENTER);
+
+        // Bottom controls
+        statusLbl   = UITheme.statusLabel();
+        statusCombo = new JComboBox<>(new String[]{"Pending","Shipped","Delivered"});
+        statusCombo.setFont(UITheme.F_FIELD);
+        statusCombo.setBackground(UITheme.C_WHITE);
+        statusCombo.setPreferredSize(new Dimension(140, 30));
+
+        JButton btnRefresh = UITheme.btn("Refresh Orders");
+        JButton btnUpdate  = UITheme.btn("Update Status");
+
+        btnRefresh.addActionListener(e -> loadOrders());
+        btnUpdate.addActionListener(e  -> updateStatus());
+
+        JPanel controlRow = UITheme.panel(new FlowLayout(FlowLayout.CENTER, 10, 12));
+        controlRow.setBorder(new MatteBorder(1,0,0,0,UITheme.C_BORDER));
+        controlRow.add(UITheme.mLabel("New Status:"));
+        controlRow.add(statusCombo);
+        controlRow.add(btnUpdate);
+        controlRow.add(btnRefresh);
+
+        JPanel south = UITheme.panel(new BorderLayout());
+        south.add(controlRow, BorderLayout.CENTER);
+        JPanel sRow = UITheme.panel(new FlowLayout(FlowLayout.CENTER));
+        sRow.add(statusLbl);
+        south.add(sRow, BorderLayout.SOUTH);
+        root.add(south, BorderLayout.SOUTH);
+
+        SwingUtilities.invokeLater(this::loadOrders);
+        return root;
+    }
+
+    private void loadOrders() {
+        model.setRowCount(0);
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(
+                "SELECT order_id,customer_id,order_date,total_amount,order_status "
+              + "FROM Orders2 ORDER BY order_date DESC")) {
+            int count = 0;
+            while (rs.next()) {
+                model.addRow(new Object[]{
+                    rs.getInt("order_id"), rs.getInt("customer_id"),
+                    rs.getDate("order_date"), rs.getDouble("total_amount"),
+                    rs.getString("order_status")});
+                count++;
+            }
+            statusLbl.setText("Loaded " + count + " orders.");
+        } catch (SQLException ex) {
+            statusLbl.setText("Error: " + ex.getMessage());
+        }
+    }
+
+    private void updateStatus() {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(null, "Please select an order first.");
+            return;
+        }
+        int    orderId   = (int)    model.getValueAt(row, 0);
+        String newStatus = (String) statusCombo.getSelectedItem();
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            PreparedStatement ps = conn.prepareStatement(
+                "UPDATE Orders2 SET order_status=? WHERE order_id=?");
+            ps.setString(1, newStatus); ps.setInt(2, orderId);
+            ps.executeUpdate();
+            statusLbl.setText("Order #" + orderId + " updated to: " + newStatus);
+            JOptionPane.showMessageDialog(null, "Order #" + orderId + " → " + newStatus);
+            loadOrders();
+        } catch (SQLException ex) {
+            statusLbl.setText("Error: " + ex.getMessage());
+        }
+    }
+}
