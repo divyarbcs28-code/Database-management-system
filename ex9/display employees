@@ -1,0 +1,25 @@
+SQL> create or replace procedure pr_display_employees
+  2  is
+  3      cursor c is
+  4          select emp_id, emp_name, job_title, hire_date, salary
+  5          from employee2;
+  6
+  7      v_id      employee2.emp_id%type;
+  8      v_name    employee2.emp_name%type;
+  9      v_job     employee2.job_title%type;
+ 10      v_hdate   employee2.hire_date%type;
+ 11      v_salary  employee2.salary%type;
+ 12  begin
+ 13      open c;
+ 14      loop
+ 15          fetch c into v_id, v_name, v_job, v_hdate, v_salary;
+ 16          exit when c%notfound;
+ 17
+ 18          dbms_output.put_line(
+ 19              v_id || ' - ' || v_name || ' - ' || v_job || ' - ' ||
+ 20              to_char(v_hdate,'dd-mon-yyyy') || ' - ' || v_salary
+ 21          );
+ 22      end loop;
+ 23      close c;
+ 24  end;
+ 25  /
