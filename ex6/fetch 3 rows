@@ -1,0 +1,2 @@
+SQL> SELECT * FROM v_customer_basic
+  2  FETCH FIRST 3 ROWS ONLY;
