@@ -1,0 +1,19 @@
+SQL> create or replace trigger trg_no_duplicate_branch_name
+  2  before insert or update of branch_name on branch
+  3  for each row
+  4  declare
+  5      v_count number;
+  6  begin
+  7      select count(*) into v_count from branch
+  8      where lower(branch_name) = lower(:new.branch_name);
+  9      if inserting then
+ 10          if v_count > 0 then
+ 11              raise_application_error(-20030,'duplicate branch name not allowed');
+ 12          end if;
+ 13      else
+ 14          if v_count > 1 then
+ 15              raise_application_error(-20031,'duplicate branch name not allowed on update');
+ 16          end if;
+ 17      end if;
+ 18  end;
+ 19  /
