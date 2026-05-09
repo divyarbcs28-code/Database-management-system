@@ -1,0 +1,371 @@
+package ex10;
+
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.sql.*;
+
+public class AdminDashboard extends JFrame {
+    private JTable productTable;
+    private DefaultTableModel tableModel;
+    private JTextField productNameField, categoryField, priceField, stockField, descriptionField;
+    private JButton addBtn, updateBtn, deleteBtn, refreshBtn, clearBtn,backbtn;
+    private JLabel messageLabel;
+
+    public AdminDashboard() {
+        setTitle("Admin Dashboard - Product Management");
+        setSize(1000, 600);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+    }
+    
+    public void showDashboard() {
+        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        // TOP PANEL - Form for adding/updating products
+        JPanel formPanel = new JPanel(new GridLayout(6, 2, 10, 10));
+        formPanel.setBorder(BorderFactory.createTitledBorder("Product Form"));
+        
+        formPanel.add(new JLabel("Product Name:"));
+        productNameField = new JTextField();
+        formPanel.add(productNameField);
+        
+        formPanel.add(new JLabel("Category:"));
+        categoryField = new JTextField();
+        formPanel.add(categoryField);
+        
+        formPanel.add(new JLabel("Price:"));
+        priceField = new JTextField();
+        formPanel.add(priceField);
+        
+        formPanel.add(new JLabel("Stock Quantity:"));
+        stockField = new JTextField();
+        formPanel.add(stockField);
+        
+        formPanel.add(new JLabel("Description:"));
+        descriptionField = new JTextField();
+        formPanel.add(descriptionField);
+        
+        // Buttons Panel
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        
+        addBtn = new JButton("Add Product");
+        addBtn.setBackground(new Color(0, 180, 0));
+        addBtn.setForeground(Color.WHITE);
+        addBtn.addActionListener(e -> addProduct());
+        buttonsPanel.add(addBtn);
+        
+        updateBtn = new JButton("Update Product");
+        updateBtn.setBackground(new Color(0, 100, 200));
+        updateBtn.setForeground(Color.WHITE);
+        updateBtn.addActionListener(e -> updateProduct());
+        buttonsPanel.add(updateBtn);
+        
+        deleteBtn = new JButton("Delete Product");
+        deleteBtn.setBackground(new Color(200, 0, 0));
+        deleteBtn.setForeground(Color.WHITE);
+        deleteBtn.addActionListener(e -> deleteProduct());
+        buttonsPanel.add(deleteBtn);
+        
+        refreshBtn = new JButton("Clear form");
+        refreshBtn.setBackground(new Color(150, 150, 150));
+        refreshBtn.setForeground(Color.WHITE);
+        refreshBtn.addActionListener(e -> clearForm());
+        buttonsPanel.add(refreshBtn);
+        
+        clearBtn = new JButton("Back");
+        clearBtn.setBackground(new Color(200, 100, 0));
+        clearBtn.setForeground(Color.WHITE);
+        clearBtn.addActionListener(e -> {dispose(); new MainDashboard().setVisible(true);});
+        buttonsPanel.add(clearBtn);
+        
+        
+        JPanel topPanel = new JPanel(new BorderLayout(10, 10));
+        topPanel.add(formPanel, BorderLayout.CENTER);
+        topPanel.add(buttonsPanel, BorderLayout.SOUTH);
+        
+        mainPanel.add(topPanel, BorderLayout.NORTH);
+        
+        // MIDDLE PANEL - Products Table
+        String[] columns = {"Product ID", "Name", "Category", "Price", "Stock", "Description"};
+        tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+        productTable = new JTable(tableModel);
+        productTable.setRowHeight(25);
+        productTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        
+        // Add mouse listener to populate form when row is selected
+        productTable.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                populateFormFromTable();
+            }
+        });
+        
+        JScrollPane scrollPane = new JScrollPane(productTable);
+        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        
+        // BOTTOM PANEL - Message Label
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        messageLabel = new JLabel("Welcome to Admin Dashboard");
+        messageLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        messageLabel.setForeground(new Color(0, 100, 0));
+        bottomPanel.add(messageLabel);
+        
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+        
+        add(mainPanel);
+        setVisible(true);
+        
+        // Load products on startup
+        loadProducts();
+    }
+    
+    private void loadProducts() {
+        tableModel.setRowCount(0);
+        try {
+            Connection conn = DatabaseConnection.getConnection();
+            String query = "SELECT product_id, product_name, category, price, stock_quantity, product_description FROM Products1 ORDER BY product_id";
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+            
+            while (rs.next()) {
+                Object[] row = {
+                    rs.getInt("product_id"),
+                    rs.getString("product_name"),
+                    rs.getString("category"),
+                    rs.getDouble("price"),
+                    rs.getInt("stock_quantity"),
+                    rs.getString("product_description")
+                };
+                tableModel.addRow(row);
+            }
+            
+            messageLabel.setText("Loaded " + tableModel.getRowCount() + " products");
+            messageLabel.setForeground(new Color(0, 100, 0));
+            
+            rs.close();
+            stmt.close();
+            conn.close();
+        } catch (SQLException e) {
+            messageLabel.setText("Error loading products: " + e.getMessage());
+            messageLabel.setForeground(Color.RED);
+        }
+    }
+    
+    private void populateFormFromTable() {
+        int selectedRow = productTable.getSelectedRow();
+        if (selectedRow == -1) {
+            return;
+        }
+        
+        productNameField.setText((String) tableModel.getValueAt(selectedRow, 1));
+        categoryField.setText((String) tableModel.getValueAt(selectedRow, 2));
+        priceField.setText(String.valueOf(tableModel.getValueAt(selectedRow, 3)));
+        stockField.setText(String.valueOf(tableModel.getValueAt(selectedRow, 4)));
+        descriptionField.setText((String) tableModel.getValueAt(selectedRow, 5));
+    }
+    
+    private void clearForm() {
+        productNameField.setText("");
+        categoryField.setText("");
+        priceField.setText("");
+        stockField.setText("");
+        descriptionField.setText("");
+        productTable.clearSelection();
+    }
+    
+    private void addProduct() {
+        String productName = productNameField.getText().trim();
+        String category = categoryField.getText().trim();
+        String priceStr = priceField.getText().trim();
+        String stockStr = stockField.getText().trim();
+        String description = descriptionField.getText().trim();
+        
+        // Validation
+        if (productName.isEmpty() || category.isEmpty() || priceStr.isEmpty() || stockStr.isEmpty()) {
+            messageLabel.setText("Error: Please fill all required fields!");
+            messageLabel.setForeground(Color.RED);
+            return;
+        }
+        
+        try {
+            double price = Double.parseDouble(priceStr);
+            int stock = Integer.parseInt(stockStr);
+            
+            if (price < 0) {
+                messageLabel.setText("Error: Price cannot be negative!");
+                messageLabel.setForeground(Color.RED);
+                return;
+            }
+            
+            if (stock < 0) {
+                messageLabel.setText("Error: Stock cannot be negative!");
+                messageLabel.setForeground(Color.RED);
+                return;
+            }
+            
+            Connection conn = DatabaseConnection.getConnection();
+            String query = "INSERT INTO Products1 (product_id,product_name, category, price, stock_quantity, product_description) " +
+                          "VALUES (product1_seq.NEXTVAL,?, ?, ?, ?, ?)";
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setString(1, productName);
+            stmt.setString(2, category);
+            stmt.setDouble(3, price);
+            stmt.setInt(4, stock);
+            stmt.setString(5, description);
+            
+            stmt.executeUpdate();
+            
+            messageLabel.setText("Product added successfully!");
+            messageLabel.setForeground(new Color(0, 180, 0));
+            
+            clearForm();
+            loadProducts();
+            
+            stmt.close();
+            conn.close();
+        } catch (NumberFormatException e) {
+            messageLabel.setText("Error: Price and Stock must be valid numbers!");
+            messageLabel.setForeground(Color.RED);
+        } catch (SQLException e) {
+            messageLabel.setText("Database Error: " + e.getMessage());
+            e.printStackTrace();  
+            messageLabel.setForeground(Color.RED);
+        }
+    }
+    
+    private void updateProduct() {
+        int selectedRow = productTable.getSelectedRow();
+        if (selectedRow == -1) {
+            messageLabel.setText("Error: Please select a product to update!");
+            messageLabel.setForeground(Color.RED);
+            return;
+        }
+        
+        int productId = (int) tableModel.getValueAt(selectedRow, 0);
+        String productName = productNameField.getText().trim();
+        String category = categoryField.getText().trim();
+        String priceStr = priceField.getText().trim();
+        String stockStr = stockField.getText().trim();
+        String description = descriptionField.getText().trim();
+        
+        // Validation
+        if (productName.isEmpty() || category.isEmpty() || priceStr.isEmpty() || stockStr.isEmpty()) {
+            messageLabel.setText("Error: Please fill all required fields!");
+            messageLabel.setForeground(Color.RED);
+            return;
+        }
+        
+        try {
+            double price = Double.parseDouble(priceStr);
+            int stock = Integer.parseInt(stockStr);
+            
+            if (price < 0) {
+                messageLabel.setText("Error: Price cannot be negative!");
+                messageLabel.setForeground(Color.RED);
+                return;
+            }
+            
+            if (stock < 0) {
+                messageLabel.setText("Error: Stock cannot be negative!");
+                messageLabel.setForeground(Color.RED);
+                return;
+            }
+            
+            Connection conn = DatabaseConnection.getConnection();
+            String query = "UPDATE Products1 SET product_name = ?, category = ?, price = ?, stock_quantity = ?, product_description = ? " +
+                          "WHERE product_id = ?";
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setString(1, productName);
+            stmt.setString(2, category);
+            stmt.setDouble(3, price);
+            stmt.setInt(4, stock);
+            stmt.setString(5, description);
+            stmt.setInt(6, productId);
+            
+            int rowsUpdated = stmt.executeUpdate();
+            
+            if (rowsUpdated > 0) {
+                messageLabel.setText("Product updated successfully!");
+                messageLabel.setForeground(new Color(0, 180, 0));
+            } else {
+                messageLabel.setText("Error: Product not found!");
+                messageLabel.setForeground(Color.RED);
+            }
+            
+            clearForm();
+            loadProducts();
+            
+            stmt.close();
+            conn.close();
+        } catch (NumberFormatException e) {
+            messageLabel.setText("Error: Price and Stock must be valid numbers!");
+            messageLabel.setForeground(Color.RED);
+        } catch (SQLException e) {
+            messageLabel.setText("Database Error: " + e.getMessage());
+            messageLabel.setForeground(Color.RED);
+        }
+    }
+    
+    private void deleteProduct() {
+        int selectedRow = productTable.getSelectedRow();
+        if (selectedRow == -1) {
+            messageLabel.setText("Error: Please select a product to delete!");
+            messageLabel.setForeground(Color.RED);
+            return;
+        }
+        
+        int productId = (int) tableModel.getValueAt(selectedRow, 0);
+        String productName = (String) tableModel.getValueAt(selectedRow, 1);
+        
+        // Confirmation dialog
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Are you sure you want to delete product: " + productName + "?",
+            "Delete Confirmation",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.WARNING_MESSAGE);
+        
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        
+        try {
+            Connection conn = DatabaseConnection.getConnection();
+            String query = "DELETE FROM Products1 WHERE product_id = ?";
+            PreparedStatement stmt = conn.prepareStatement(query);
+            stmt.setInt(1, productId);
+            
+            int rowsDeleted = stmt.executeUpdate();
+            
+            if (rowsDeleted > 0) {
+                messageLabel.setText("Product deleted successfully!");
+                messageLabel.setForeground(new Color(0, 180, 0));
+            } else {
+                messageLabel.setText("Error: Product not found!");
+                messageLabel.setForeground(Color.RED);
+            }
+            
+            clearForm();
+            loadProducts();
+            
+            stmt.close();
+            conn.close();
+        } catch (SQLException e) {
+            messageLabel.setText("Database Error: " + e.getMessage());
+            messageLabel.setForeground(Color.RED);
+        }
+    }
+    
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            AdminDashboard dashboard = new AdminDashboard();
+            dashboard.showDashboard();
+        });
+    }
+}
