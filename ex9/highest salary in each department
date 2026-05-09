@@ -1,0 +1,33 @@
+SQL> create or replace procedure pr_highest_salary_each_dept
+  2  is
+  3      cursor c1 is
+  4          select dept_id from department;
+  5      cursor c2(d number) is
+  6          select emp_id, emp_name, salary from employee2 where dept_id = d
+  7          order by salary desc;
+  8      v_dept   number;
+  9      v_id     number;
+ 10      v_name   varchar2(30);
+ 11      v_sal    number;
+ 12      counter  number;
+ 13  begin
+ 14      open c1;
+ 15      loop
+ 16          fetch c1 into v_dept;
+ 17          exit when c1%notfound;
+ 18          dbms_output.put_line('department : ' || v_dept);
+ 19          counter := 0;
+ 20          open c2(v_dept);
+ 21          loop
+ 22              fetch c2 into v_id, v_name, v_sal;
+ 23              exit when c2%notfound;
+ 24              counter := counter + 1;
+ 25              if counter = 1 then
+ 26                  dbms_output.put_line('highest salary : ' || v_id || ' - ' || v_name || ' - ' || v_sal);
+ 27              end if;
+ 28          end loop;
+ 29          close c2;
+ 30      end loop;
+ 31      close c1;
+ 32  end;
+ 33  /
