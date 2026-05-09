@@ -1,0 +1,12 @@
+SQL> create or replace trigger trg_block_salary_update_night
+  2  before update of salary on employee1
+  3  for each row
+  4  declare
+  5      v_hour number := to_number(to_char(sysdate,'hh24'));
+  6  begin
+  7      if v_hour between 20 and 23 or v_hour between 0 and 5 then
+  8          raise_application_error(-20010,
+  9          'salary update not allowed between 8 pm and 6 am');
+ 10      end if;
+ 11  end;
+ 12  /
