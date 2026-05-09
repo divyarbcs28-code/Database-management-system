@@ -1,0 +1,13 @@
+SQL> create or replace function fn_display_jobtitles
+  2  return varchar2
+  3  is
+  4  begin
+  5      for r in (select distinct job_title from employee2) loop
+  6          dbms_output.put_line(r.job_title);
+  7      end loop;
+  8
+  9      return 'job title';
+ 10  end;
+ 11  /
+
+SQL> select fn_display_jobtitles from dual;
