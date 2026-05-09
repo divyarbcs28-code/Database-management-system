@@ -1,0 +1,318 @@
+package vinisem4;
+import java.sql.*;
+import java.util.Scanner;
+import java.util.InputMismatchException;
+public class CustomerConsole {
+    static Connection con;
+    static Scanner sc = new Scanner(System.in);
+    public static void main(String[] args) {
+        if (!connectDB()) {
+            System.out.println("❌ Database connection failed.");
+            return;
+        }
+        boolean running = true;
+        while (running) {
+            try {
+                System.out.println("\n===== CUSTOMER MANAGEMENT =====");
+                System.out.println("1. View All Customers");
+                System.out.println("2. View Customer by ID");
+                System.out.println("3. Add Customer");
+                System.out.println("4. Update Customer");
+                System.out.println("5. Delete Customer");
+                System.out.println("6. Customer statistics");
+                System.out.println("7. Exit");
+                System.out.print("Enter choice: ");
+                int ch = sc.nextInt();
+                sc.nextLine();
+                switch (ch) {
+                    case 1 -> displayAllCustomers();
+                    case 2 -> displayCustomerById();
+                    case 3 -> addCustomer();
+                    case 4 -> updateCustomer();
+                    case 5 -> deleteCustomer();
+                    case 6 -> customerStatistics();
+                    case 7 -> running = false;
+                    default -> System.out.println("❌ Invalid choice");
+                }
+            } catch (InputMismatchException e) {
+                System.out.println("❌ Enter valid number!");
+                sc.nextLine();
+            }
+        }
+        closeDB();
+        sc.close();
+    }
+    // ================= CONNECT DB =================
+    static boolean connectDB() {
+        try {
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            con = DriverManager.getConnection(
+                    "jdbc:oracle:thin:@localhost:1521:orcl",
+                    "C##user1",
+                    "Pass123"
+            );
+            return true;
+        } catch (Exception e) {
+            System.out.println("❌ DB Error: " + e.getMessage());
+            return false;
+        }
+    }
+    // ================= VIEW ALL =================
+    static void displayAllCustomers() {
+        try {
+            String sql = "SELECT customer_id, customer_name, email, address_city, address_pincode FROM customer1";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery();
+            System.out.println("\nID | NAME | EMAIL | CITY | PINCODE");
+            System.out.println("---------------------------------------");
+            int count = 0;
+            while (rs.next()) {
+                System.out.println(
+                        rs.getInt(1) + " | " +
+                        rs.getString(2) + " | " +
+                        rs.getString(3) + " | " +
+                        rs.getString(4) + " | " +
+                        rs.getInt(5)
+                );
+                count++;
+            }
+            if (count == 0) {
+                System.out.println("❌ No customers found!");
+            } else {
+                System.out.println("\nTotal Records: " + count);
+            }
+            rs.close();
+            ps.close();
+        } catch (Exception e) {
+            System.out.println("❌ Error: " + e.getMessage());
+        }
+    }
+    // ================= VIEW BY ID =================
+    static void displayCustomerById() {
+        try {
+            System.out.print("Enter Customer ID: ");
+            int id = sc.nextInt();
+            String sql = "SELECT * FROM customer1 WHERE customer_id=?";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setInt(1, id);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                System.out.println("\n--- CUSTOMER DETAILS ---");
+                System.out.println("ID: " + rs.getInt("customer_id"));
+                System.out.println("Name: " + rs.getString("customer_name"));
+                System.out.println("Email: " + rs.getString("email"));
+                System.out.println("Street: " + rs.getString("address_street"));
+                System.out.println("City: " + rs.getString("address_city"));
+                System.out.println("Pincode: " + rs.getInt("address_pincode"));
+            } else {
+                System.out.println("❌ Customer not found!");
+            }
+            rs.close();
+            ps.close();
+        } catch (Exception e) {
+            System.out.println("❌ Error: " + e.getMessage());
+            sc.nextLine();
+        }
+    }
+    // ================= ADD =================
+    static void addCustomer() {
+        try {
+            System.out.print("Enter Name: ");
+            String name = sc.nextLine();
+            if (name.isEmpty()) {
+                System.out.println("⚠ Fields are empty");
+                return;
+            }
+            System.out.print("Enter Email: ");
+            String email = sc.nextLine();
+            if (email.isEmpty()) {
+                System.out.println("⚠ Fields are empty");
+                return;
+            }
+            System.out.print("Enter Street: ");
+            String street = sc.nextLine();
+            if (street.isEmpty()) {
+                System.out.println("⚠ Fields are empty");
+                return;
+            }
+            System.out.print("Enter City: ");
+            String city = sc.nextLine();
+            if (city.isEmpty()) {
+                System.out.println("⚠ Fields are empty");
+                return;
+            }
+            System.out.print("Enter Pincode: ");
+            int pin = sc.nextInt();
+            // Using sequence to auto-generate customer_id
+            String sql = "INSERT INTO customer1 (customer_id, customer_name, email, address_street, address_city, address_pincode) VALUES (customer_id_seq.NEXTVAL, ?, ?, ?, ?, ?)";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, name);
+            ps.setString(2, email);
+            ps.setString(3, street);
+            ps.setString(4, city);
+            ps.setInt(5, pin);
+            ps.executeUpdate();
+            System.out.println("✅ Customer Added Successfully!");
+            ps.close();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid input!");
+            sc.nextLine();
+        } catch (Exception e) {
+            System.out.println("❌ Error: " + e.getMessage());
+            sc.nextLine();
+        }
+    }
+    // ================= UPDATE =================
+    static void updateCustomer() {
+        try {
+            System.out.print("Enter ID to update: ");
+            int id = sc.nextInt();
+            sc.nextLine();
+            // Check if customer exists
+            String checkSql = "SELECT * FROM customer1 WHERE customer_id=?";
+            PreparedStatement checkPs = con.prepareStatement(checkSql);
+            checkPs.setInt(1, id);
+            ResultSet checkRs = checkPs.executeQuery();
+            if (!checkRs.next()) {
+                System.out.println("❌ Customer not found!");
+                checkRs.close();
+                checkPs.close();
+                return;
+            }
+            checkRs.close();
+            checkPs.close();
+            System.out.print("Enter New Name (or press Enter to skip): ");
+            String name = sc.nextLine();
+            System.out.print("Enter New Email (or press Enter to skip): ");
+            String email = sc.nextLine();
+            System.out.print("Enter New Street (or press Enter to skip): ");
+            String street = sc.nextLine();
+            System.out.print("Enter New City (or press Enter to skip): ");
+            String city = sc.nextLine();
+            System.out.print("Enter New Pincode (or press Enter to skip): ");
+            String pinStr = sc.nextLine();
+            StringBuilder sql = new StringBuilder("UPDATE customer1 SET ");
+            java.util.List<Object> params = new java.util.ArrayList<>();
+            if (!name.trim().isEmpty()) {
+                sql.append("customer_name=?, ");
+                params.add(name.trim());
+            }
+            if (!email.trim().isEmpty()) {
+                sql.append("email=?, ");
+                params.add(email.trim());
+            }
+            if (!street.trim().isEmpty()) {
+                sql.append("address_street=?, ");
+                params.add(street.trim());
+            }
+            if (!city.trim().isEmpty()) {
+                sql.append("address_city=?, ");
+                params.add(city.trim());
+            }
+            if (!pinStr.trim().isEmpty()) {
+                sql.append("address_pincode=?, ");
+                params.add(Integer.parseInt(pinStr.trim()));
+            }
+            if (params.isEmpty()) {
+                System.out.println("⚠ No fields updated.");
+                return;
+            }
+            sql.setLength(sql.length() - 2); // Remove last comma and space
+            sql.append(" WHERE customer_id=?");
+            params.add(id);
+            PreparedStatement ps = con.prepareStatement(sql.toString());
+            for (int i = 0; i < params.size(); i++) {
+                Object param = params.get(i);
+                if (param instanceof Integer) {
+                    ps.setInt(i + 1, (Integer) param);
+                } else if (param instanceof String) {
+                    ps.setString(i + 1, (String) param);
+                }
+            }
+            int rows = ps.executeUpdate();
+            if (rows > 0)
+                System.out.println("✅ Updated Successfully!");
+            else
+                System.out.println("❌ Update failed!");
+            ps.close();
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Invalid input!");
+            sc.nextLine();
+        } catch (Exception e) {
+            System.out.println("❌ Error: " + e.getMessage());
+            sc.nextLine();
+        }
+    }
+    // ================= DELETE =================
+    static void deleteCustomer() {
+        try {
+            System.out.print("Enter ID to delete: ");
+            int id = sc.nextInt();
+            String sql = "DELETE FROM customer1 WHERE customer_id=?";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setInt(1, id);
+            int rows = ps.executeUpdate();
+            if (rows > 0)
+                System.out.println("✅ Deleted Successfully!");
+            else
+                System.out.println("❌ Customer not found!");
+            ps.close();
+        } catch (Exception e) {
+            System.out.println("❌ Error: " + e.getMessage());
+            sc.nextLine();
+        }
+        
+    }
+    static void customerStatistics() {
+        try {
+            System.out.println("\n===== CUSTOMER STATISTICS =====");
+
+            // 1. Total customers
+            String q1 = "SELECT COUNT(*) FROM customer1";
+            PreparedStatement ps1 = con.prepareStatement(q1);
+            ResultSet rs1 = ps1.executeQuery();
+            if (rs1.next()) {
+                System.out.println("Total Customers: " + rs1.getInt(1));
+            }
+
+            // 2. Highest customer ID
+            String q2 = "SELECT MAX(customer_id) FROM customer1";
+            PreparedStatement ps2 = con.prepareStatement(q2);
+            ResultSet rs2 = ps2.executeQuery();
+            if (rs2.next()) {
+                System.out.println("Max Customer ID: " + rs2.getInt(1));
+            }
+
+            // 3. Lowest customer ID
+            String q3 = "SELECT MIN(customer_id) FROM customer1";
+            PreparedStatement ps3 = con.prepareStatement(q3);
+            ResultSet rs3 = ps3.executeQuery();
+            if (rs3.next()) {
+                System.out.println("Min Customer ID: " + rs3.getInt(1));
+            }
+
+            // 4. Average pincode (just for demo math)
+            String q4 = "SELECT AVG(address_pincode) FROM customer1";
+            PreparedStatement ps4 = con.prepareStatement(q4);
+            ResultSet rs4 = ps4.executeQuery();
+            if (rs4.next()) {
+                System.out.println("Average Pincode: " + rs4.getDouble(1));
+            }
+
+            rs1.close(); rs2.close(); rs3.close(); rs4.close();
+            ps1.close(); ps2.close(); ps3.close(); ps4.close();
+
+        } catch (Exception e) {
+            System.out.println("❌ Error: " + e.getMessage());
+        }
+    }
+    // ================= CLOSE =================
+    static void closeDB() {
+        try {
+            if (con != null) con.close();
+            System.out.println("✅ Database connection closed.");
+        } catch (Exception e) {
+            System.out.println("❌ Close Error: " + e.getMessage());
+        }
+    }
+}
