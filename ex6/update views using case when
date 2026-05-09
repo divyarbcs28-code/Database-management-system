@@ -1,0 +1,6 @@
+SQL> UPDATE v_high_value_orders
+  2  SET total_amount =
+  3      CASE
+  4          WHEN total_amount < 10000 THEN total_amount * 1.10
+  5          ELSE total_amount
+  6      END;
