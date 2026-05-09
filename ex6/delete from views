@@ -1,0 +1,6 @@
+SQL> DELETE FROM v_high_value_orders
+  2  WHERE
+  3      CASE
+  4          WHEN total_amount >= 12000 THEN 1
+  5          ELSE 0
+  6      END = 1;
