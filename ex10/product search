@@ -1,0 +1,104 @@
+package ex10;
+
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.table.*;
+import java.awt.*;
+import java.sql.*;
+
+/**
+ * Screen 4 — Product Search
+ * Embedded inside MainDashboard.
+ */
+public class ProductSearch {
+
+    private final MainDashboard  dashboard;
+    private DefaultTableModel    model;
+    private JTextField           searchField;
+    private JComboBox<String>    searchTypeCombo;
+    private JLabel               statusLbl;
+
+    public ProductSearch(MainDashboard dashboard) {
+        this.dashboard = dashboard;
+    }
+
+    public JPanel buildPanel() {
+        JPanel root = UITheme.bgPanel(new BorderLayout(0, 0));
+        root.add(UITheme.sectionHeader("Product Search", "search by name or category"), BorderLayout.NORTH);
+
+        // Search bar
+        JPanel searchBar = UITheme.panel(new FlowLayout(FlowLayout.LEFT, 12, 12));
+        searchBar.setBorder(new MatteBorder(0,0,1,0,UITheme.C_BORDER));
+
+        searchTypeCombo = new JComboBox<>(new String[]{"Name","Category"});
+        searchTypeCombo.setFont(UITheme.F_FIELD);
+        searchTypeCombo.setBackground(UITheme.C_WHITE);
+        searchTypeCombo.setPreferredSize(new Dimension(130, 30));
+
+        searchField = UITheme.field();
+        searchField.setPreferredSize(new Dimension(260, 30));
+
+        JButton btnSearch = UITheme.btn("Search");
+        JButton btnClear  = UITheme.btn("Clear");
+        btnSearch.addActionListener(e -> searchProducts());
+        btnClear.addActionListener(e -> { searchField.setText(""); model.setRowCount(0); statusLbl.setText("Cleared."); });
+        // Allow Enter key to trigger search
+        searchField.addActionListener(e -> searchProducts());
+
+        searchBar.add(UITheme.mLabel("Search by:"));
+        searchBar.add(searchTypeCombo);
+        searchBar.add(UITheme.mLabel("Value:"));
+        searchBar.add(searchField);
+        searchBar.add(btnSearch);
+        searchBar.add(btnClear);
+        root.add(searchBar, BorderLayout.NORTH);
+
+        // Result table
+        String[] cols = {"ID","Name","Category","Price","Stock","Description"};
+        model = new DefaultTableModel(cols, 0) {
+            public boolean isCellEditable(int r, int c) { return false; }
+        };
+        JTable table = UITheme.styledTable(model);
+
+        JPanel center = UITheme.panel(new BorderLayout());
+        center.setBorder(new EmptyBorder(12,16,12,16));
+        center.add(UITheme.scrl(table), BorderLayout.CENTER);
+        root.add(center, BorderLayout.CENTER);
+
+        statusLbl = UITheme.statusLabel();
+        JPanel statusRow = UITheme.panel(new FlowLayout(FlowLayout.LEFT, 16, 6));
+        statusRow.add(statusLbl);
+        root.add(statusRow, BorderLayout.SOUTH);
+
+        return root;
+    }
+
+    private void searchProducts() {
+        String val  = searchField.getText().trim();
+        String type = (String) searchTypeCombo.getSelectedItem();
+        if (val.isEmpty()) {
+            JOptionPane.showMessageDialog(dashboard, "Please enter a search value.");
+            return;
+        }
+        model.setRowCount(0);
+        String col = "Name".equals(type) ? "product_name" : "category";
+        String sql  = "SELECT product_id,product_name,category,price,stock_quantity,product_description "
+                    + "FROM Products1 WHERE LOWER(" + col + ") LIKE ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, "%" + val.toLowerCase() + "%");
+            ResultSet rs = ps.executeQuery();
+            int count = 0;
+            while (rs.next()) {
+                model.addRow(new Object[]{
+                    rs.getInt("product_id"), rs.getString("product_name"),
+                    rs.getString("category"), rs.getDouble("price"),
+                    rs.getInt("stock_quantity"), rs.getString("product_description")});
+                count++;
+            }
+            statusLbl.setText(count == 0 ? "No products found." : count + " product(s) found.");
+        } catch (SQLException ex) {
+            statusLbl.setText("DB error: " + ex.getMessage());
+        }
+    }
+}
