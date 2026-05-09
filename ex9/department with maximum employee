@@ -1,0 +1,14 @@
+SQL> create or replace procedure pr_dept_with_max_emp
+  2  is
+  3      v_deptname department.dept_name%type;
+  4  begin
+  5      select dept_name into v_deptname
+  6      from (select d.dept_name, count(e.emp_id) cnt from department d
+  7          join employee2 e on d.dept_id = e.dept_id
+  8          group by d.dept_name
+  9          order by cnt desc) where rownum = 1;
+ 10      dbms_output.put_line('department with maximum employees : ' || v_deptname);
+ 11  end;
+ 12  /
+
+SQL> exec pr_dept_with_max_emp;
